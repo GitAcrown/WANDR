@@ -2,6 +2,8 @@
 
 import io
 import logging
+import subprocess
+import sys
 import textwrap
 import traceback
 from contextlib import redirect_stdout
@@ -267,6 +269,26 @@ class Core(commands.Cog):
     async def ping(self, interaction: discord.Interaction) -> None:
         """Renvoie le ping du bot"""
         await interaction.response.send_message(f"Pong ! (`{round(self.bot.latency * 1000)}ms`)")
+        
+    @app_commands.command(name="info")
+    async def info(self, interaction: discord.Interaction) -> None:
+        """Retourne des informations sur le bot"""
+        embed = discord.Embed(title="Informations sur le bot", color=pretty.DEFAULT_EMBED_COLOR)
+        botuser = self.bot.user
+        if not botuser:
+            await interaction.response.send_message("**Erreur** • Le bot n'est pas connecté.", ephemeral=True)
+            return
+        embed.set_author(name=botuser.name, icon_url=botuser.display_avatar, url='https://github.com/GitAcrown/WANDR')
+        desc = f"***{botuser.name}*** est un bot Discord francophone développé par *@acrone*, dérivé du bot ***NERON*** du même développeur pour offrir des fonctionnalités expérimentales aux serveurs."""
+        embed.description = desc
+        
+        python_ver = sys.version_info
+        dpy_ver = discord.__version__
+        commit_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+        embed.add_field(name="Version", value=f"Python `{python_ver.major}.{python_ver.minor}.{python_ver.micro}`\nDiscord.py `{dpy_ver}`\nCode source `{commit_hash}`")
+        embed.add_field(name="Présence", value=f"Serveurs `{len(self.bot.guilds)}`\nUtilisateurs `{len(self.bot.users)}`")
+    
+        await interaction.response.send_message(embed=embed)
                 
     # Commandes d'aide des commandes ------------------------------
     
