@@ -6,6 +6,7 @@ from datetime import datetime
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
+from numpy import delete
 
 from common import dataio, rankio
 from common.utils import fuzzy, pretty, interface
@@ -83,6 +84,96 @@ class FortuneCookieFlagButton(discord.ui.View):
         embed = self.__cog.embed_cookie(self.cookie_data)
         await interaction.response.edit_message(view=None, embed=embed)
         self.__cog.check_flagged_cookies(interaction.guild)
+        
+class FortuneCookieDeleteOwnButton(discord.ui.View):
+    """Vue pour supprimer un de ses cookie de la fortune."""
+    def __init__(self, cog: 'Messages', cookies: list[dict], opener: discord.Member):
+        super().__init__(timeout=20.0)
+        self.__cog = cog
+        self.cookies = cookies
+        self.opener = opener
+        
+        self.interaction : Interaction | None = None
+        
+        self.pages = self.get_embeds()
+        self.index = 0
+        self.deleted_indexes = []
+        
+    def get_embeds(self):
+        embeds = [self.__cog.embed_cookie(c, hide_content=False) for c in self.cookies]
+        for i, embed in enumerate(embeds):
+            embed.set_footer(text=f"Cookie {i+1}/{len(embeds)}")
+        return embeds
+    
+    def is_delete_button_disabled(self, index: int):
+        return index in self.deleted_indexes
+        
+    async def on_timeout(self):
+        if self.interaction:
+            await self.interaction.delete_original_response()
+            
+    async def interaction_check(self, interaction: Interaction):
+        if interaction.user.id == self.opener.id:
+            return True
+        else:
+            await interaction.response.send_message("**Pas touche !** · Seul l'auteur de la commande peut supprimer ses cookies.", ephemeral=True)
+            return False
+        
+    async def start(self, interaction: Interaction):
+        await self.show_page(interaction)
+        self.interaction = interaction
+        
+    async def show_page(self, interaction: Interaction):    
+        if not self.pages:
+            await interaction.edit_original_response(content="**Plus aucun cookie** · Vous n'avez pas/plus de cookies de la fortune.")
+            return
+        if not self.pages[self.index]:
+            self.index = 0
+        await interaction.edit_original_response(embed=self.pages[self.index], view=self)
+        
+    @discord.ui.button(style=discord.ButtonStyle.blurple, emoji=pretty.EMOJIS_ICONS['back'])
+    async def prev_page(self, interaction: Interaction, button: discord.ui.Button):
+        self.index = (self.index - 1) % len(self.pages)
+        await interaction.response.defer(ephemeral=True)
+        
+        if self.is_delete_button_disabled(self.index):
+            self.delete_cookie.disabled = True
+        else:
+            self.delete_cookie.disabled = False
+        
+        await self.show_page(self.interaction or interaction)
+        
+    @discord.ui.button(label="Supprimer", style=discord.ButtonStyle.danger)
+    async def delete_cookie(self, interaction: Interaction, button: discord.ui.Button):
+        if not isinstance(interaction.guild, discord.Guild):
+            return
+        self.__cog.delete_cookie(interaction.guild, self.cookies[self.index]['id'])
+        await interaction.response.defer(ephemeral=True)
+        current_embed = self.pages[self.index]
+        new_embed = current_embed.copy()
+        new_embed.color = discord.Color.red()
+        new_embed.set_footer(text=f"Cookie {self.index+1}/{len(self.pages)} • Supprimé")
+        self.pages[self.index] = new_embed
+        self.deleted_indexes.append(self.index)
+        self.delete_cookie.disabled = True
+        await self.show_page(self.interaction or interaction)
+        
+    @discord.ui.button(style=discord.ButtonStyle.blurple, emoji=pretty.EMOJIS_ICONS['next'])
+    async def next_page(self, interaction: Interaction, button: discord.ui.Button):
+        self.index = (self.index + 1) % len(self.pages)
+        await interaction.response.defer(ephemeral=True)
+        
+        if self.is_delete_button_disabled(self.index):
+            self.delete_cookie.disabled = True
+        else:
+            self.delete_cookie.disabled = False
+            
+        await self.show_page(self.interaction or interaction)
+            
+    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji=pretty.EMOJIS_ICONS['close'])
+    async def close_view(self, interaction: Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=None)
+        self.stop()
 
 # COG =======================================================
 
@@ -326,6 +417,21 @@ class Messages(commands.Cog):
             embeds.append(embed)
             
         await interface.EmbedPaginatorMenu(embeds=embeds, users=[interaction.user]).start(interaction)
+        
+    @fortune_group.command(name="review")
+    async def cmd_fortune_review(self, interaction: Interaction):
+        """Affiche la liste de vos cookies de la fortune et vous permet de les supprimer"""
+        if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.user, discord.Member):
+            return
+        
+        cookies = self.get_cookies_by_author(interaction.guild, interaction.user)
+        if not cookies:
+            await interaction.response.send_message("**Aucun cookie** · Vous n'avez pas encore créé de cookies de la fortune.", ephemeral=True)
+            return
+        
+        await interaction.response.defer(ephemeral=True)
+        view = FortuneCookieDeleteOwnButton(self, cookies, interaction.user)
+        await view.start(interaction)
         
     fortune_mod_group = app_commands.Group(
         name="manage-fortune",
