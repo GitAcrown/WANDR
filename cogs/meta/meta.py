@@ -1,15 +1,12 @@
 import logging
-import random
-import re
 from datetime import datetime, timedelta
 
-from IPython import embed
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
 from common import rankio
-from common.utils import fuzzy, pretty, interface
+from common.utils import pretty
 
 logger = logging.getLogger(f'WANDR.{__name__.split(".")[-1]}')
 
