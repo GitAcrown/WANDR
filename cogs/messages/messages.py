@@ -7,7 +7,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from common import dataio
+from common import dataio, rankio
 from common.utils import fuzzy, pretty, interface
 
 logger = logging.getLogger(f'WANDR.{__name__.split(".")[-1]}')
@@ -177,6 +177,7 @@ class Messages(commands.Cog):
         if img:
             img_url = img.group(0)
             embed.set_image(url=img_url)
+            embed.description = content.replace(img_url, '').strip()
             
         author = self.bot.get_user(cookie['author_id'])
         if not author:
@@ -274,7 +275,8 @@ class Messages(commands.Cog):
             return await interaction.followup.send("**Annulé** · La création du cookie a été annulée.", ephemeral=True)
         
         self.add_cookie(interaction.user, content)
-        await interaction.edit_original_response(content="**Cookie ajouté** · Votre cookie de la fortune a été ajouté avec succès.", view=None, embed=None)
+        rankio.get(interaction.user).add_points(10)
+        await interaction.edit_original_response(content="**Cookie ajouté** · Votre cookie de la fortune a été ajouté avec succès.\nVous gagnez **10 points de prestige (✱)** pour votre contribution !", view=None)
         
     @fortune_group.command(name="list")
     @app_commands.rename(author='auteur', flagged='signalés')
