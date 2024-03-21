@@ -264,12 +264,14 @@ class Messages(commands.Cog):
             description=content,
             color=pretty.DEFAULT_EMBED_COLOR if hide_content else 0xfcab40
         )
+        # S'il y a des paramètres (après ?) dans les liens, on les enlève
         img = re.search(r'(https?://[^\s]+)', content)
         if img:
-            img_url = img.group(0)
+            total_url = img.group(0)
+            img_url = total_url.split('?')[0] if '?' in total_url else total_url
             if img_url.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
                 embed.set_image(url=img_url)
-                embed.description = content.replace(img_url, '').strip()
+                embed.description = content.replace(total_url, '').strip()
             
         author = self.bot.get_user(cookie['author_id'])
         if not author:
