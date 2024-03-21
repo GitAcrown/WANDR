@@ -134,6 +134,6 @@ dmypy.json
 
 # Project specific
 cogs/*/data/
-common/global
+common/public
 tests/
 snippets/
