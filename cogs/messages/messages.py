@@ -267,8 +267,9 @@ class Messages(commands.Cog):
         img = re.search(r'(https?://[^\s]+)', content)
         if img:
             img_url = img.group(0)
-            embed.set_image(url=img_url)
-            embed.description = content.replace(img_url, '').strip()
+            if img_url.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                embed.set_image(url=img_url)
+                embed.description = content.replace(img_url, '').strip()
             
         author = self.bot.get_user(cookie['author_id'])
         if not author:
@@ -347,8 +348,11 @@ class Messages(commands.Cog):
             await interaction.response.send_message(f"**Trop de cookies** · Vous avez déjà atteint la limite de cookies pour aujourd'hui. Vous pouvez en soumettre jusqu'à {self.data.get(interaction.guild).get_dict_value('settings', 'CookiesPerUserPerDay', cast=int)}.", ephemeral=True)
             return
         
-        if len(content) > 500:
-            await interaction.response.send_message(f"**Contenu trop long** · Votre cookie de la fortune ne peut pas dépasser 500 caractères.", ephemeral=True)
+        content = content.strip()
+        links = re.findall(r'(https?://[^\s]+)', content)
+        content_lenght = len(content) - sum(len(link) for link in links)
+        if content_lenght > 500:
+            await interaction.response.send_message(f"**Contenu trop long** · Votre cookie de la fortune ne peut pas dépasser 500 caractères (liens non inclus).", ephemeral=True)
             return
         
         all_cookies = self.get_cookies(interaction.guild)
