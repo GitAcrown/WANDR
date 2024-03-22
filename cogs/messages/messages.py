@@ -175,15 +175,16 @@ class FortuneCookieReviewView(discord.ui.View):
         modal = EditCookieContentModal(self.__cog, cookie)
         await interaction.response.send_modal(modal)
         if not await modal.wait(): # Le modal a été exécuté correctement
+            cookie = self.__cog.get_cookie(interaction.guild, cookie['id'])
+            if not cookie:
+                return
             current_page = self.pages[self.index]
             new_page = current_page.copy()
-            new_page.description = self.__cog.embed_cookie(cookie, hide_content=False).description
+            new_page.description = cookie['content']
             new_page.color = discord.Color.green()
             new_page.set_footer(text=f"Cookie {self.index+1}/{len(self.pages)} • Modifié")
             self.pages[self.index] = new_page
             await self.show_page(self.interaction or interaction)
-        else:
-            await interaction.response.send_message("**Annulé** · La modification du cookie a été annulée.", ephemeral=True, delete_after=5.0)
         
     @discord.ui.button(label="Supprimer", style=discord.ButtonStyle.danger)
     async def delete_cookie(self, interaction: Interaction, button: discord.ui.Button):
