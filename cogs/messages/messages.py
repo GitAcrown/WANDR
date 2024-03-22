@@ -84,8 +84,32 @@ class FortuneCookieFlagButton(discord.ui.View):
         embed = self.__cog.embed_cookie(self.cookie_data)
         await interaction.response.edit_message(view=None, embed=embed)
         self.__cog.check_flagged_cookies(interaction.guild)
+
+class EditCookieContentModal(discord.ui.Modal):
+    def __init__(self, cog: 'Messages', cookie_data: dict):
+        super().__init__(title="Modifier le cookie", timeout=300.0)
+        self.__cog = cog
+        self.cookie_data = cookie_data
+
+        self.new_content = discord.ui.TextInput(label="Contenu", 
+                                           placeholder="Contenu du cookie", 
+                                           min_length=1, 
+                                           style=discord.TextStyle.paragraph,
+                                           default=cookie_data['content'])
         
-class FortuneCookieDeleteOwnButton(discord.ui.View):
+        self.add_item(self.new_content)
+        
+    async def on_submit(self, interaction: Interaction):
+        if not isinstance(interaction.guild, discord.Guild):
+            return
+        self.__cog.edit_cookie_content(interaction.guild, self.cookie_data['id'], self.new_content.value)
+        await interaction.response.send_message(f"**Cookie modifié** · Le contenu du cookie `ID:{self.cookie_data['id']}` a été modifié avec succès.", ephemeral=True, delete_after=5.0)
+        self.stop()
+        
+    async def on_timeout(self) -> None:
+        self.stop()
+        
+class FortuneCookieReviewView(discord.ui.View):
     """Vue pour supprimer un de ses cookie de la fortune."""
     def __init__(self, cog: 'Messages', cookies: list[dict], opener: discord.Member):
         super().__init__(timeout=20.0)
@@ -142,6 +166,24 @@ class FortuneCookieDeleteOwnButton(discord.ui.View):
             self.delete_cookie.disabled = False
         
         await self.show_page(self.interaction or interaction)
+        
+    @discord.ui.button(label="Editer", style=discord.ButtonStyle.green)
+    async def edit_cookie(self, interaction: Interaction, button: discord.ui.Button):
+        if not isinstance(interaction.guild, discord.Guild):
+            return
+        cookie = self.cookies[self.index]
+        modal = EditCookieContentModal(self.__cog, cookie)
+        await interaction.response.send_modal(modal)
+        if not await modal.wait(): # Le modal a été exécuté correctement
+            current_page = self.pages[self.index]
+            new_page = current_page.copy()
+            new_page.description = self.__cog.embed_cookie(cookie, hide_content=False).description
+            new_page.color = discord.Color.green()
+            new_page.set_footer(text=f"Cookie {self.index+1}/{len(self.pages)} • Modifié")
+            self.pages[self.index] = new_page
+            await self.show_page(self.interaction or interaction)
+        else:
+            await interaction.response.send_message("**Annulé** · La modification du cookie a été annulée.", ephemeral=True, delete_after=5.0)
         
     @discord.ui.button(label="Supprimer", style=discord.ButtonStyle.danger)
     async def delete_cookie(self, interaction: Interaction, button: discord.ui.Button):
@@ -246,6 +288,9 @@ class Messages(commands.Cog):
         
     def delete_cookie(self, guild: discord.Guild, id: int):
         self.data.get(guild).execute('''DELETE FROM cookies WHERE id = ?''', (id,))
+        
+    def edit_cookie_content(self, guild: discord.Guild, id: int, content: str):
+        self.data.get(guild).execute('''UPDATE cookies SET content = ? WHERE id = ?''', (content, id))
         
     def use_cookie(self, guild: discord.Guild, id: int):
         self.data.get(guild).execute('''UPDATE cookies SET uses = uses + 1 WHERE id = ?''', (id,))
@@ -436,7 +481,7 @@ class Messages(commands.Cog):
             return
         
         await interaction.response.defer(ephemeral=True)
-        view = FortuneCookieDeleteOwnButton(self, cookies, interaction.user)
+        view = FortuneCookieReviewView(self, cookies, interaction.user)
         await view.start(interaction)
         
     fortune_mod_group = app_commands.Group(
