@@ -10,7 +10,9 @@ EMOJIS_ICONS = {
     'back': '<:iconBack:1149814142354599967>',
     'next': '<:iconNext:1149814237150052513>',
     'close': '<:iconClose:1149813971239579770>',
-    'warning': '<:iconWarning:1219723922275041504>'
+    'warning': '<:iconWarning:1219723922275041504>',
+    'edit': '<:iconEdit:1220803154887835758>',
+    'delete': '<:iconDelete:1220803156074692739>'
 }
 
 # Raccourcis de formattage Discord ---------------------------

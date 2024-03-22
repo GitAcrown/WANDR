@@ -167,7 +167,7 @@ class FortuneCookieReviewView(discord.ui.View):
         
         await self.show_page(self.interaction or interaction)
         
-    @discord.ui.button(label="Editer", style=discord.ButtonStyle.green)
+    @discord.ui.button(style=discord.ButtonStyle.green, emoji=pretty.EMOJIS_ICONS['edit'])
     async def edit_cookie(self, interaction: Interaction, button: discord.ui.Button):
         if not isinstance(interaction.guild, discord.Guild):
             return
@@ -186,7 +186,7 @@ class FortuneCookieReviewView(discord.ui.View):
             self.pages[self.index] = new_page
             await self.show_page(self.interaction or interaction)
         
-    @discord.ui.button(label="Supprimer", style=discord.ButtonStyle.danger)
+    @discord.ui.button(style=discord.ButtonStyle.danger, emoji=pretty.EMOJIS_ICONS['delete'])
     async def delete_cookie(self, interaction: Interaction, button: discord.ui.Button):
         if not isinstance(interaction.guild, discord.Guild):
             return
