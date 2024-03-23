@@ -171,7 +171,10 @@ class FortuneCookieReviewView(discord.ui.View):
     async def edit_cookie(self, interaction: Interaction, button: discord.ui.Button):
         if not isinstance(interaction.guild, discord.Guild):
             return
-        cookie = self.cookies[self.index]
+        cookie_id = self.cookies[self.index]['id']
+        cookie = self.__cog.get_cookie(interaction.guild, cookie_id)
+        if not cookie:
+            return
         modal = EditCookieContentModal(self.__cog, cookie)
         await interaction.response.send_modal(modal)
         if not await modal.wait(): # Le modal a été exécuté correctement
@@ -411,7 +414,7 @@ class Messages(commands.Cog):
         # Générer une prévisualisation
         embed = self.embed_cookie({'content': content, 'author_id': interaction.user.id, 'uses': 0, 'flags': 0}, hide_content=False)
         confirm = interface.ConfirmationView(confirm_label="Valider", users=[interaction.user])
-        await interaction.response.send_message("**Prévisualisation** · Est-ce que l'affichage vous convient ?", embed=embed, ephemeral=True, view=confirm)
+        await interaction.response.send_message("**Prévisualisation** · Est-ce que l'affichage vous convient ? (Les images peuvent mettre du temps à s'afficher)", embed=embed, ephemeral=True, view=confirm)
         await confirm.wait()
         if not confirm.value:
             await interaction.delete_original_response()
