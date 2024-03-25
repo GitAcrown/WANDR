@@ -1,7 +1,7 @@
 import logging
 import random
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import discord
 from discord import Interaction, app_commands
@@ -18,7 +18,7 @@ logger = logging.getLogger(f'WANDR.{__name__.split(".")[-1]}')
 class FortuneCookieBaseView(discord.ui.View):
     """Vue de base pour l'ouverture de fortune cookies."""
     def __init__(self, cog: 'Messages', cookie_data: dict, opener: discord.Member):
-        super().__init__(timeout=20.0)
+        super().__init__(timeout=15.0)
         self.__cog = cog
         self.cookie_data = dict(cookie_data)
         self.opener = opener
@@ -27,6 +27,8 @@ class FortuneCookieBaseView(discord.ui.View):
         
     async def on_timeout(self):
         if self.interaction:
+            if self.interaction.guild_id:
+                self.__cog._cooldowns.setdefault(self.interaction.guild_id, {})[self.interaction.user.id] = datetime.now() + timedelta(seconds=10)
             await self.interaction.delete_original_response()
             
     async def interaction_check(self, interaction: Interaction):
@@ -47,6 +49,8 @@ class FortuneCookieBaseView(discord.ui.View):
             return
         self.__cog.use_cookie(interaction.guild, self.cookie_data['id'])
         self.cookie_data['uses'] += 1
+        self.__cog._cooldowns.setdefault(interaction.guild.id, {})[interaction.user.id] = datetime.now() + timedelta(minutes=5)
+        
         embed = self.__cog.embed_cookie(self.cookie_data)
         
         new_view = FortuneCookieFlagButton(self.__cog, self.cookie_data, self.opener, self.interaction or interaction)
@@ -251,6 +255,8 @@ class Messages(commands.Cog):
 
         self.data.set_defaults(discord.Guild, guild_settings_db, cookies_db)
         
+        self._cooldowns : dict[int, dict[int, datetime]] = {}
+        
     def cog_unload(self):
         self.data.close_all()
         
@@ -372,11 +378,16 @@ class Messages(commands.Cog):
     
     @fortune_group.command(name="get")
     @app_commands.guild_only()
-    @app_commands.checks.cooldown(1, 300, key=lambda i: (i.guild_id, i.user.id))
     async def cmd_fortune_get(self, interaction: Interaction):
         """Ouvre un cookie de la fortune contenant un message créé par un membres du serveur"""
         if not isinstance(interaction.guild, discord.Guild) or not isinstance(interaction.user, discord.Member):
             return
+        # Vérifier le cooldown
+        if interaction.user.id in self._cooldowns.get(interaction.guild.id, {}):
+            if datetime.now() < self._cooldowns[interaction.guild.id][interaction.user.id]:
+                restant = self._cooldowns[interaction.guild.id][interaction.user.id]
+                return await interaction.response.send_message(f"**Cooldown** · Vous devez attendre encore {pretty.humanize_relative_time(datetime.now(), from_time=restant)} avant d'ouvrir un nouveau cookie.", ephemeral=True)
+        
         cookie = self.get_random_cookie(interaction.guild)
         if not cookie:
             await interaction.response.send_message("**Pas de cookie** · Il n'y a pas de cookies de la fortune sur ce serveur.", ephemeral=True)
