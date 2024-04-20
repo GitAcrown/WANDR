@@ -823,7 +823,7 @@ class Robot(commands.Cog):
             text.append(f"{i}. {member.name} · {user['tokens_generated']}")
         
         embed.description = pretty.codeblock('\n'.join(text))
-        embed.set_footer(text=f"Nombre de tokens générés par utilisateur\nTotal : {sum(u['tokens_generated'] for u in users)})")
+        embed.set_footer(text=f"Nombre de tokens générés par utilisateur\nTotal : {sum(u['tokens_generated'] for u in users)}")
         await interaction.response.send_message(embed=embed)
             
 async def setup(bot):
