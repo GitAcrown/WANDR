@@ -794,11 +794,11 @@ class Robot(commands.Cog):
         
         # 0.0005$ pour 1k tokens en input
         # 0.0015$ pour 1k tokens en output
-        # 0.002$ pour 1k tokens en total en moyenne
+        # 0.002$ pour 1k tokens en total en moyenne (estimation haute)
         conv = 0.002 / 1000
         cost = track['tokens_generated'] * conv
         
-        await interaction.response.send_message(f"L'utilisateur ***{user}*** a généré **{track['tokens_generated']} jetons**, soit environ **{cost:.4f}$**.", ephemeral=True)
+        await interaction.response.send_message(f"L'utilisateur ***{user}*** a généré **{track['tokens_generated']} tokens**, soit au maximum **{cost:.4f}$** (estimation).", ephemeral=True)
         
     @stats_group.command(name='top')
     async def stats_top(self, interaction: Interaction, top: int = 10):
