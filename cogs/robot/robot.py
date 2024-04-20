@@ -279,7 +279,7 @@ class CustomChatbot(BaseChatbot):
     def clear_messages(self):
         self.__cog.data.get(self.guild).execute(
             "DELETE FROM messages WHERE preset_id = ?",
-            (self.preset_id)
+            (self.preset_id,)
         )
         self._messages.clear()
     
