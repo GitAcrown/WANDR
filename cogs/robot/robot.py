@@ -2,7 +2,6 @@ import asyncio
 import logging
 import re
 from typing import Iterable
-from httpx import delete
 import unidecode
 from openai import AsyncOpenAI
 from datetime import datetime, timedelta
@@ -525,7 +524,7 @@ class Robot(commands.Cog):
             self.detach_chatbot(interaction.channel)
         
         # On regarde s'il y a un chatbot en session, sinon on envoie un modal pour créer un chatbot de base
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         if not self.get_session(interaction.channel):
             view = CreateOrLoadView(self, author=interaction.user, channel=interaction.channel)
             await interaction.followup.send("**Aucun chatbot actif** · Créer un **chatbot temporaire** ou en **charger un existant** ?", view=view)
@@ -553,7 +552,7 @@ class Robot(commands.Cog):
         if usage:
             self.increment_user_tokens(interaction.user, int(usage))
             
-        await interaction.followup.send(f"`{name} :` {response}")
+        await interaction.followup.send(f"`{name} :` {response}", ephemeral=False)
         await asyncio.sleep(5)
         await interaction.delete_original_response()
         
