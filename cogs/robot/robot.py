@@ -327,6 +327,11 @@ class Robot(commands.Cog):
         )
         self.data.set_defaults(discord.Guild, presets, messages)
         
+        glob_settings = {
+            'CurrentMonth': datetime.now().month
+        }
+        global_settings = dataio.DictTableDefault('global_settings', glob_settings)
+        
         user_tracking = dataio.TableDefault(
             """CREATE TABLE IF NOT EXISTS user_tracking (
                 user_id INTEGER PRIMARY KEY,
@@ -334,7 +339,7 @@ class Robot(commands.Cog):
                 blocked BOOLEAN CHECK (blocked IN (0, 1)) DEFAULT 0
             )"""
         )
-        self.data.set_defaults('global', user_tracking)
+        self.data.set_defaults('global', user_tracking, global_settings)
 
         self.client = AsyncOpenAI(
             api_key=self.bot.config['OPENAI_API_KEY'], # type: ignore
@@ -395,10 +400,12 @@ class Robot(commands.Cog):
     
     def get_user_tracking(self, user: discord.User | discord.Member) -> dict | None:
         """Obtenir les informations de suivi d'un utilisateur"""
+        self.clearup_user_tracking()
         return self.data.get('global').fetch("SELECT * FROM user_tracking WHERE user_id = ?", (user.id,))
     
     def set_user_tracking(self, user: discord.User | discord.Member, tokens_generated: int, blocked: bool):
         """Mettre à jour les informations de suivi d'un utilisateur"""
+        self.clearup_user_tracking()
         self.data.get('global').execute(
             "INSERT OR REPLACE INTO user_tracking (user_id, tokens_generated, blocked) VALUES (?, ?, ?)",
             (user.id, tokens_generated, blocked)
@@ -420,6 +427,14 @@ class Robot(commands.Cog):
         else:
             self.set_user_tracking(user, 0, blocked)
             
+    def clearup_user_tracking(self, force: bool = False):
+        """Nettoyer les données de suivi des utilisateurs (tous les mois)"""
+        current_month = datetime.now().month
+        if force or current_month != self.data.get('global').get_dict_value('global_settings', 'CurrentMonth', cast=int):
+            self.data.get('global').set_dict_value('global_settings', 'CurrentMonth', current_month)
+            # On remet à zéro les jetons générés par les utilisateurs
+            self.data.get('global').execute("UPDATE user_tracking SET tokens_generated = 0")
+        
     # --- Affichage ---
     
     def preview_chatbot(self, name: str, system_prompt: str, temperature: float) -> discord.Embed:
@@ -798,7 +813,7 @@ class Robot(commands.Cog):
         conv = 0.002 / 1000
         cost = track['tokens_generated'] * conv
         
-        await interaction.response.send_message(f"L'utilisateur ***{user}*** a généré **{track['tokens_generated']} tokens**, soit au maximum **{cost:.4f}$** (estimation).", ephemeral=True)
+        await interaction.response.send_message(f"L'utilisateur ***{user}*** a généré **{track['tokens_generated']} tokens** ce mois-ci, soit au maximum **{cost:.4f}$** (estimation).", ephemeral=True)
         
     @stats_group.command(name='top')
     async def stats_top(self, interaction: Interaction, top: int = 10):
@@ -822,8 +837,11 @@ class Robot(commands.Cog):
                 continue
             text.append(f"{i}. {member.name} · {user['tokens_generated']}")
         
+        conv = 0.002 / 1000
+        total_cost = sum(u['tokens_generated'] for u in users) * conv
+        
         embed.description = pretty.codeblock('\n'.join(text))
-        embed.set_footer(text=f"Nombre de tokens générés par utilisateur\nTotal : {sum(u['tokens_generated'] for u in users)}")
+        embed.set_footer(text=f"Nombre de tokens générés par utilisateur ce mois-ci\nTotal : {sum(u['tokens_generated'] for u in users)} tokens = {total_cost:.4f}$")
         await interaction.response.send_message(embed=embed)
             
 async def setup(bot):
