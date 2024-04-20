@@ -596,7 +596,8 @@ class Robot(commands.Cog):
             chatbot.clear_messages()
             
         self.attach_chatbot(interaction.channel, chatbot)
-        await interaction.response.send_message(f"Le chatbot personnalisé ***{chatbot.data['name']}*** a été chargé avec succès sur le salon en cours.", ephemeral=True)
+        embed = self.preview_chatbot(chatbot.name, chatbot.system_prompt, chatbot.temperature)
+        await interaction.response.send_message(f"Le chatbot personnalisé ***{chatbot.data['name']}*** a été chargé avec succès sur le salon en cours.", embed=embed)
     
     @chatbot_group.command(name='list')
     async def chatbot_list(self, interaction: Interaction):
