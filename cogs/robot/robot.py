@@ -808,21 +808,21 @@ class Robot(commands.Cog):
         if not isinstance(interaction.guild, discord.Guild):
             return await interaction.response.send_message("**Inaccessible** · Cette commande n'est disponible que sur les serveurs.", ephemeral=True)
         
-        users = self.data.get('global').fetch_all("SELECT * FROM user_tracking WHERE tokens_generated > 0 ORDER BY tokens_generated DESC LIMIT 10")
+        users = self.data.get('global').fetch_all("SELECT * FROM user_tracking WHERE tokens_generated > 0 ORDER BY tokens_generated DESC LIMIT ?", (top,))
         if not users:
             return await interaction.response.send_message("Aucun utilisateur n'a généré de jetons.", ephemeral=True)
+        users = [user for user in users if interaction.guild.get_member(user['user_id'])]
         
         embed = discord.Embed(title="Statistiques ChatGPT · Top utilisateurs", color=discord.Color.blurple())
         text = []
         for i, user in enumerate(users, start=1):
             member = interaction.guild.get_member(user['user_id'])
-            if member:
-                text.append(f"{i}. {member} · {user['tokens_generated']}t")
-            else:
-                text.append(f"{i}. Inconnu · {user['tokens_generated']}t")
+            if not member:
+                continue
+            text.append(f"{i}. {member.mention} · {user['tokens_generated']}")
         
         embed.description = pretty.codeblock('\n'.join(text))
-        embed.set_footer(text=f"Nombre de tokens générés par utilisateur")
+        embed.set_footer(text=f"Nombre de tokens générés par utilisateur\nTotal : {sum(u['tokens_generated'] for u in users)})")
         await interaction.response.send_message(embed=embed)
             
 async def setup(bot):
