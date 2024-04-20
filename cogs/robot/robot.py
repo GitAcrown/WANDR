@@ -812,7 +812,7 @@ class Robot(commands.Cog):
         if not users:
             return await interaction.response.send_message("Aucun utilisateur n'a généré de jetons.", ephemeral=True)
         
-        embed = discord.Embed(title="Top des utilisateurs", color=discord.Color.blurple())
+        embed = discord.Embed(title="Statistiques ChatGPT · Top utilisateurs", color=discord.Color.blurple())
         text = []
         for i, user in enumerate(users, start=1):
             member = interaction.guild.get_member(user['user_id'])
@@ -822,6 +822,7 @@ class Robot(commands.Cog):
                 text.append(f"{i}. Inconnu · {user['tokens_generated']}t")
         
         embed.description = pretty.codeblock('\n'.join(text))
+        embed.set_footer(text=f"Nombre de tokens générés par utilisateur")
         await interaction.response.send_message(embed=embed)
             
 async def setup(bot):
