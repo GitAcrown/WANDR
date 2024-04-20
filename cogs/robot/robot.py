@@ -775,6 +775,54 @@ class Robot(commands.Cog):
         
         self.block_user(user, False)
         await interaction.response.send_message(f"L'utilisateur ***{user}*** a été débloqué de l'utilisation de ChatGPT.", ephemeral=True)
+        
+    stats_group = app_commands.Group(name='stats', description="Statistiques d'utilisation de ChatGPT", guild_only=True)
+    
+    @stats_group.command(name='usertokens')
+    async def stats_usertokens(self, interaction: Interaction, user: discord.Member):
+        """Afficher le nombre de jetons générés par un utilisateur
+        
+        :param user: Utilisateur à consulter
+        """
+        if not isinstance(interaction.guild, discord.Guild):
+            return await interaction.response.send_message("**Inaccessible** · Cette commande n'est disponible que sur les serveurs.", ephemeral=True)
+        
+        track = self.get_user_tracking(user)
+        if not track:
+            return await interaction.response.send_message("**Inconnu** · Cet utilisateur n'a pas généré de jetons.", ephemeral=True)
+        
+        # 0.0005$ pour 1k tokens en input
+        # 0.0015$ pour 1k tokens en output
+        # 0.002$ pour 1k tokens en total en moyenne
+        conv = 0.002 / 1000
+        cost = track['tokens_generated'] * conv
+        
+        await interaction.response.send_message(f"L'utilisateur ***{user}*** a généré **{track['tokens_generated']} jetons**, soit environ **{cost:.4f}$**.", ephemeral=True)
+        
+    @stats_group.command(name='top')
+    async def stats_top(self, interaction: Interaction, top: int = 10):
+        """Afficher le top des utilisateurs ayant généré le plus de jetons
+        
+        :param top: Nombre d'utilisateurs à afficher (par défaut : 10)
+        """
+        if not isinstance(interaction.guild, discord.Guild):
+            return await interaction.response.send_message("**Inaccessible** · Cette commande n'est disponible que sur les serveurs.", ephemeral=True)
+        
+        users = self.data.get('global').fetch_all("SELECT * FROM user_tracking WHERE tokens_generated > 0 ORDER BY tokens_generated DESC LIMIT 10")
+        if not users:
+            return await interaction.response.send_message("Aucun utilisateur n'a généré de jetons.", ephemeral=True)
+        
+        embed = discord.Embed(title="Top des utilisateurs", color=discord.Color.blurple())
+        text = []
+        for i, user in enumerate(users, start=1):
+            member = interaction.guild.get_member(user['user_id'])
+            if member:
+                text.append(f"{i}. {member} · {user['tokens_generated']}t")
+            else:
+                text.append(f"{i}. Inconnu · {user['tokens_generated']}t")
+        
+        embed.description = pretty.codeblock('\n'.join(text))
+        await interaction.response.send_message(embed=embed)
             
 async def setup(bot):
     await bot.add_cog(Robot(bot))
