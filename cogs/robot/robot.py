@@ -524,6 +524,7 @@ class Robot(commands.Cog):
             self.detach_chatbot(interaction.channel)
         
         # On regarde s'il y a un chatbot en session, sinon on envoie un modal pour créer un chatbot de base
+        disp_embed = False
         await interaction.response.defer(ephemeral=True)
         if not self.get_session(interaction.channel):
             view = CreateOrLoadView(self, author=interaction.user, channel=interaction.channel)
@@ -533,6 +534,7 @@ class Robot(commands.Cog):
                     return await interaction.delete_original_response()
                 elif view.value == 'create':
                     await interaction.edit_original_response(content="**Chatbot temporaire créé** · Le chatbot va répondre à votre message dans un instant...", view=None)
+                    disp_embed = True
                 elif view.value.startswith('load:'):
                     await interaction.edit_original_response(content="**Chatbot chargé** · Le chatbot va répondre à votre message dans un instant...", view=None)
                 else:
@@ -551,9 +553,16 @@ class Robot(commands.Cog):
         usage = completion.get('usage')
         if usage:
             self.increment_user_tokens(interaction.user, int(usage))
-            
-        await interaction.followup.send(f"`{name} :` {response}", ephemeral=False)
-        await asyncio.sleep(5)
+        
+        embed = None
+        if disp_embed:
+            embed = discord.Embed(title="Chatbot temporaire", color=discord.Color.blurple())
+            embed.add_field(name="Instructions", value=pretty.codeblock(chatbot.system_prompt))
+            embed.add_field(name="Température", value=pretty.codeblock(f"{chatbot.temperature} ⚠" if chatbot.temperature > 1.4 else f"{chatbot.temperature}"))
+            await interaction.followup.send(f"`{name} :` {response}", ephemeral=False, embed=embed)
+        else:
+            await interaction.followup.send(f"`{name} :` {response}", ephemeral=False)
+        await asyncio.sleep(8)
         await interaction.delete_original_response()
         
     @commands.Cog.listener()
