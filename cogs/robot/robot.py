@@ -820,7 +820,7 @@ class Robot(commands.Cog):
             member = interaction.guild.get_member(user['user_id'])
             if not member:
                 continue
-            text.append(f"{i}. {member.mention} · {user['tokens_generated']}")
+            text.append(f"{i}. {member.name} · {user['tokens_generated']}")
         
         embed.description = pretty.codeblock('\n'.join(text))
         embed.set_footer(text=f"Nombre de tokens générés par utilisateur\nTotal : {sum(u['tokens_generated'] for u in users)})")
