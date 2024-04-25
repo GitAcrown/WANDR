@@ -807,10 +807,7 @@ class Robot(commands.Cog):
         if not track:
             return await interaction.response.send_message("**Inconnu** · Cet utilisateur n'a pas généré de jetons.", ephemeral=True)
         
-        # 0.0005$ pour 1k tokens en input
-        # 0.0015$ pour 1k tokens en output
-        # 0.002$ pour 1k tokens en total en moyenne (estimation haute)
-        conv = 0.002 / 1000
+        conv = 0.0015 / 1000
         cost = track['tokens_generated'] * conv
         
         await interaction.response.send_message(f"L'utilisateur ***{user}*** a généré **{track['tokens_generated']} tokens** ce mois-ci, soit au maximum **{cost:.4f}$** (estimation).", ephemeral=True)
@@ -835,13 +832,16 @@ class Robot(commands.Cog):
             member = interaction.guild.get_member(user['user_id'])
             if not member:
                 continue
-            text.append(f"{i}. {member.name} · {user['tokens_generated']}")
+            if member == self.bot.user:
+                text.append(f"{i}. {member.name.lower()}* · {user['tokens_generated']}")
+            else:
+                text.append(f"{i}. {member.name} · {user['tokens_generated']}")
         
-        conv = 0.002 / 1000
+        conv = 0.0015 / 1000
         total_cost = sum(u['tokens_generated'] for u in users) * conv
         
         embed.description = pretty.codeblock('\n'.join(text))
-        embed.set_footer(text=f"Nombre de tokens générés par utilisateur ce mois-ci\nTotal : {sum(u['tokens_generated'] for u in users)} tokens = {total_cost:.4f}$")
+        embed.set_footer(text=f"Tokens générés ce mois-ci seulement\nTotal tokens : {sum(u['tokens_generated'] for u in users)} ≈ {total_cost:.4f}$\n(*) Comptage fonction 'continuer'")
         await interaction.response.send_message(embed=embed)
             
 async def setup(bot):
